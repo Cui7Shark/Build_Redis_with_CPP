@@ -800,6 +800,7 @@ static void process_timers() {
 }
 
 int main() {
+    //1.创建套接字
     // prepare the listening socket
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -809,17 +810,19 @@ int main() {
     int val = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
+    // 2.绑定套接字
     // bind
     struct sockaddr_in addr = {};
     addr.sin_family = AF_INET;
     addr.sin_port = ntohs(1234);
+    //绑定来自任意地址的客户端
     addr.sin_addr.s_addr = ntohl(0);    // wildcard address 0.0.0.0
     int rv = bind(fd, (const sockaddr *)&addr, sizeof(addr));
     if (rv) {
         die("bind()");
     }
-
-    // listen
+    //3. 监听套接字
+    // listen   
     rv = listen(fd, SOMAXCONN);
     if (rv) {
         die("listen()");
@@ -828,10 +831,11 @@ int main() {
     // set the listen fd to nonblocking mode
     fd_set_nb(fd);
 
-    // some initializations
+    // some initializations 超时连接定时器、线程池初始化
     dlist_init(&g_data.idle_list);
-    thread_pool_init(&g_data.tp, 4);
-
+    thread_pool_init(&g_data.tp, 4); 
+    
+    // 4.事件循环 - 连接客户端、处理请求、发送回复、关闭套接字
     // the event loop
     std::vector<struct pollfd> poll_args;
     while (true) {
